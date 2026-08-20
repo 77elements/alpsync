@@ -1,0 +1,21 @@
+# alpsync runtime data — never commit
+
+# per-user runtime state (archive registry, managed packages)
+alpsync.state
+
+# personal configurations live next to the script but are user-specific;
+# examples live in examples/ and are tracked
+/*.conf
+
+# internal owner/maintainer documents (private)
+AGENTS.md
+IMPLEMENTATION_PLAN.md
+
+# local opencode workflow config (private)
+.opencode/
+
+# maintainer file sync between own machines (private, syncs itself)
+sync-protected.sh
+
+# OS junk
+.DS_Store
