@@ -446,6 +446,67 @@ else
   fail "sync: unison archives created in isolation dir"
 fi
 
+# --- run-all menu entry (shown for >= 2 configs): sequential + aggregate
+RB="$WORK/runallbox"
+mkdir -p "$RB/home" "$RB/A1" "$RB/B1" "$RB/A2" "$RB/B2"
+cp "$SCRIPT" "$RB/alpsync.sh"
+printf 'LABEL="one"\nMODE="local"\nPAIRS=(\n  "%s/A1|%s/B1"\n)\n' "$RB" "$RB" >"$RB/one.conf"
+printf 'LABEL="two"\nMODE="local"\nPAIRS=(\n  "%s/A2|%s/B2"\n)\n' "$RB" "$RB" >"$RB/two.conf"
+echo seed1 >"$RB/B1/seed.txt"
+echo seed2 >"$RB/B2/seed.txt"
+echo one-x >"$RB/A1/one.txt"
+echo two-x >"$RB/A2/two.txt"
+
+# menu order: run-all listed before new-configuration
+printf 'q\n' | HOME="$RB/home" UNISON="$RB/home/.unison" bash "$RB/alpsync.sh" >"$WORK/runall-menu.out" 2>&1
+la_line=$(grep -n 'Run all configurations' "$WORK/runall-menu.out" | head -1 | cut -d: -f1)
+nc_line=$(grep -n 'New configuration' "$WORK/runall-menu.out" | head -1 | cut -d: -f1)
+if [ -n "$la_line" ] && [ -n "$nc_line" ] && [ "$la_line" -lt "$nc_line" ]; then
+  ok "run-all: menu entry before 'New configuration'"
+else
+  fail "run-all: menu entry before 'New configuration'" "la=$la_line nc=$nc_line"
+fi
+
+# happy path: both configs synced, aggregate success, rc 0
+printf '3\n' | HOME="$RB/home" UNISON="$RB/home/.unison" bash "$RB/alpsync.sh" >"$WORK/runall.out" 2>&1
+assert_eq "$?" "0" "run-all: rc 0 with two clean configs"
+assert_file "$RB/B1/one.txt" "run-all: config 1 synced"
+assert_file "$RB/B2/two.txt" "run-all: config 2 synced"
+if grep -q 'All 2 configuration(s) synced successfully' "$WORK/runall.out"; then
+  ok "run-all: aggregate success message"
+else
+  fail "run-all: aggregate success message"
+fi
+
+# failure tolerance: config 2 target missing + declined → config 1 still
+# synced, aggregate failure listing, rc 1
+rm -rf "$RB/B2"
+printf '3\nn\n' | HOME="$RB/home" UNISON="$RB/home/.unison" bash "$RB/alpsync.sh" >"$WORK/runall-fail.out" 2>&1
+assert_eq "$?" "1" "run-all: rc 1 when one config fails"
+if grep -q 'two.conf' "$WORK/runall-fail.out" && grep -q 'these failed' "$WORK/runall-fail.out"; then
+  ok "run-all: failed config listed in aggregate"
+else
+  fail "run-all: failed config listed in aggregate"
+fi
+if [ -f "$RB/B1/one.txt" ]; then
+  ok "run-all: earlier config unaffected by later failure"
+else
+  fail "run-all: earlier config unaffected by later failure"
+fi
+
+# single config → no run-all entry
+RB1="$WORK/runall1"
+mkdir -p "$RB1/home" "$RB1/A" "$RB1/B"
+cp "$SCRIPT" "$RB1/alpsync.sh"
+printf 'LABEL="solo"\nMODE="local"\nPAIRS=(\n  "%s/A|%s/B"\n)\n' "$RB1" "$RB1" >"$RB1/solo.conf"
+echo s >"$RB1/B/seed.txt"
+printf 'q\n' | HOME="$RB1/home" UNISON="$RB1/home/.unison" bash "$RB1/alpsync.sh" >"$WORK/runall-single.out" 2>&1
+if grep -q 'Run all configurations' "$WORK/runall-single.out"; then
+  fail "run-all: hidden with a single config"
+else
+  ok "run-all: hidden with a single config"
+fi
+
 # --------------------------------------------------------------------------
 section "5. PATH helper (alias append, D9)"
 

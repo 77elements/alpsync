@@ -116,7 +116,7 @@ self-contained, easy to back up or move.
 
 | Command | Description |
 |---|---|
-| `./alpsync.sh` | Show the configuration menu (or create a new one) |
+| `./alpsync.sh` | Show the configuration menu — run one, run all (needs ≥ 2 configs), or create a new one |
 | `./alpsync.sh <config>` | Run a configuration — accepts `name`, `name.conf` or a path |
 | `./alpsync.sh --uninstall` | Step-by-step removal of everything alpsync added |
 | `./alpsync.sh --help` / `-h` | Show help |

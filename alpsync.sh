@@ -2006,7 +2006,7 @@ usage() {
 alpsync — bidirectional folder sync via unison (macOS + Linux)
 
 Usage:
-  ./alpsync.sh              Select a configuration (or create a new one)
+  ./alpsync.sh              Select a configuration, run all, or create a new one
   ./alpsync.sh <config>     Run a configuration (name, name.conf, or path)
   ./alpsync.sh --uninstall  Remove alpsync step by step (asks per step)
   ./alpsync.sh --help       Show this help
@@ -2020,12 +2020,46 @@ Exit codes: 0 ok · 1 sync issues · 2 usage/config error · 3 dependencies.
 EOF
 }
 
+# Runs every discovered configuration sequentially (menu entry "Run all",
+# only shown for >= 2 configs). Each config runs in a subshell so its exit
+# paths (preflight aborts, pair failures) only end that config — a failing
+# config never stops the rest. Aggregate summary at the end.
+run_all_syncs() {
+  local f name ok_count=0 fail_count=0 c
+  local -a failed_confs=()
+  for f in ${CONFIG_FILES[@]+"${CONFIG_FILES[@]}"}; do
+    name=$(basename -- "$f")
+    if ( load_config "$f" && run_sync ); then
+      ok_count=$((ok_count + 1))
+    else
+      fail_count=$((fail_count + 1))
+      failed_confs+=("$name")
+    fi
+  done
+  echo ""
+  ui_separator
+  if [ "$fail_count" -eq 0 ]; then
+    echo ""
+    ui_ok "All $ok_count configuration(s) synced successfully."
+    exit 0
+  fi
+  ui_warn "Ran $((ok_count + fail_count)) configuration(s) — these failed:"
+  for c in ${failed_confs[@]+"${failed_confs[@]}"}; do
+    printf '  - %s\n' "$c"
+  done
+  exit 1
+}
+
 main_menu() {
   discover_configs
   local -a items=() f
+  local nconf=${#CONFIG_FILES[@]}
   for f in ${CONFIG_FILES[@]+"${CONFIG_FILES[@]}"}; do
     items+=("$(basename -- "$f")")
   done
+  if [ "$nconf" -ge 2 ]; then
+    items+=("‹ Run all configurations ›")
+  fi
   items+=("‹ New configuration… ›")
   echo ""
   ui_header "alpsync $ALPSYNC_VERSION — select configuration"
@@ -2036,6 +2070,9 @@ main_menu() {
   if [ "$MENU_RESULT" -eq $((${#items[@]} - 1)) ]; then
     wizard_run
     exit 0
+  fi
+  if [ "$nconf" -ge 2 ] && [ "$MENU_RESULT" -eq "$nconf" ]; then
+    run_all_syncs
   fi
   load_config "${CONFIG_FILES[$MENU_RESULT]}"
   run_sync
