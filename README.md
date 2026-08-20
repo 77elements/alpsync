@@ -1,10 +1,11 @@
 # alpsync
 
-**Bidirectional folder sync for macOS and Linux — powered by
-[unison](https://github.com/bcpierce003/unison).**
+**Bidirectional folder sync — powered by
+[unison](https://github.com/bcpierce003/unison). Runs on macOS and Linux.**
 
-alpsync keeps pairs of folders identical in **both directions**: Mac ⇄ Linux
-over SSH, or folder ⇄ folder on the same machine (e.g. a mounted SMB/NAS
+alpsync keeps pairs of folders identical in **both directions** — between
+any two machines over SSH (Mac ⇄ Mac, Mac ⇄ Linux, Linux ⇄ Linux) or
+between two local paths on the same machine (e.g. a mounted SMB/NAS
 share). It wraps a sync method that has proven itself over years of daily
 use, and adds a Norton-Commander-style terminal UI, a setup wizard,
 dependency management and a clean uninstall — all in a **single bash file**
